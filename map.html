@@ -33,7 +33,64 @@
                     top: 0.0%;
                 }
             </style>
-        
+        <!-- 높이 강제: 일부 환경에서 height:100% 계산 실패 방지 -->
+<style>
+  .folium-map { height: 88vh !important; width: 100% !important; }
+  html, body { height: 100%; }
+</style>
+
+<!-- 아이콘 플러그인 명시 로딩 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.awesome-markers/2.0.4/leaflet.awesome-markers.js"></script>
+
+<!-- 색상/필터 스크립트 (이 파일은 리포지토리 루트에 controls.js로 업로드) -->
+<script src="./controls.js" defer></script>
+
+<!-- UI 오버레이(큰 범례 + 날짜 선택 + 오늘만 보기 + 에러박스) -->
+<style>
+  #legend{position:fixed;bottom:16px;left:16px;z-index:9999;background:rgba(255,255,255,.98);
+    padding:14px 16px;border:1px solid #ced4da;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);
+    font-size:15px;line-height:1.6}
+  #controls{position:fixed;top:16px;left:16px;z-index:9999;background:rgba(255,255,255,.98);
+    padding:12px 14px;border:1px solid #ced4da;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);
+    font-size:14px}
+</style>
+<div id="legend">
+  <div style="font-weight:700;margin-bottom:10px">표시 색 설명</div>
+  <div style="display:flex;align-items:center;margin-bottom:6px">
+    <span style="display:inline-block;width:14px;height:14px;background:#2E86DE;border-radius:50%;margin-right:8px"></span>
+    파란색: 오늘 오픈
+  </div>
+  <div style="display:flex;align-items:center;margin-bottom:6px">
+    <span style="display:inline-block;width:14px;height:14px;background:#2ECC71;border-radius:50%;margin-right:8px"></span>
+    초록색: 오픈 예정
+  </div>
+  <div style="display:flex;align-items:center">
+    <span style="display:inline-block;width:14px;height:14px;background:#adb5bd;border-radius:50%;margin-right:8px"></span>
+    회색: 오픈 지남
+  </div>
+</div>
+<div id="controls">
+  <div style="font-weight:700;margin-bottom:8px">보기 설정</div>
+  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <label>기준 날짜:
+      <input type="date" id="refDate" style="padding:6px 8px;border:1px solid #ced4da;border-radius:8px">
+    </label>
+    <label style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="onlyToday">
+      오늘만 보기
+    </label>
+    <button id="resetBtn" style="padding:6px 10px;border-radius:8px;border:1px solid #495057;background:#495057;color:#fff">
+      오늘로
+    </button>
+  </div>
+  <div style="margin-top:6px;color:#666;font-size:12px">※ 한국시간(Asia/Seoul) 기준. 날짜를 바꾸면 색상과 표시 대상이 즉시 변경됩니다.</div>
+</div>
+<div id="errorBox" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:#fff;border:1px solid #ff6b6b;color:#c92a2a;padding:12px 14px;border-radius:10px;z-index:10000;">
+  스크립트 오류로 지도를 꾸미지 못했습니다. 새로고침 또는 외부 브라우저(Chrome/Safari)로 열어주세요.
+</div>
+
 </head>
 <body>
     
