@@ -1,15 +1,46 @@
-(function(){
-  try {
-    function getMap(){
-      const k = Object.keys(window).find(k => /^map_/.test(k));
-      return window[k];
-    }
-    const MAP = getMap();
-    if (!MAP) throw new Error("Map instance not found");
+// controls.js (robust init with wait-for-map)
+(function () {
+  // ===== Helper: wait until condition becomes true (with timeout) =====
+  function waitFor(condFn, onReady, {timeout=15000, interval=60} = {}) {
+    const start = Date.now();
+    (function check() {
+      try {
+        if (condFn()) return onReady();
+      } catch (e) { /* ignore and keep waiting */ }
+      if (Date.now() - start > timeout) {
+        showError('초기화 시간 초과: 지도/아이콘 스크립트가 준비되지 않았습니다.');
+        return;
+      }
+      setTimeout(check, interval);
+    })();
+  }
 
-    function dateToYMDLocal(d){
-      const y=d.getFullYear(), m=(d.getMonth()+1).toString().padStart(2,'0'), da=d.getDate().toString().padStart(2,'0');
-      return y+"-"+m+"-"+da;
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    if (box) {
+      box.style.display = 'block';
+      box.textContent = '스크립트 오류로 지도를 꾸미지 못했습니다. 새로고침 또는 외부 브라우저(Chrome/Safari)로 열어주세요.\n(' + msg + ')';
+    }
+    console.error(msg);
+  }
+
+  // Folium이 만든 전역 지도 객체 키 찾기 (예: map_abc123)
+  function getMapKey() {
+    return Object.keys(window).find(
+      k => /^map_/.test(k) && window[k] && typeof window[k].eachLayer === 'function'
+    );
+  }
+
+  // ===== Main boot after map & plugins ready =====
+  function boot() {
+    const mapKey = getMapKey();
+    if (!mapKey) { showError('Map instance not found'); return; }
+    const MAP = window[mapKey];
+
+    // 유틸
+    function dateToYMDLocal(d) {
+      const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), da = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${da}`;
     }
     function todayKSTDate(){
       const now = new Date();
@@ -18,7 +49,8 @@
       return new Date(k.getFullYear(), k.getMonth(), k.getDate());
     }
     function parseISODateOnly(iso){
-      const d = new Date(iso); if (isNaN(d)) return null;
+      const d = new Date(iso);
+      if (isNaN(d)) return null;
       return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
     function statusFor(opens, refDate){
@@ -41,7 +73,7 @@
       return L.AwesomeMarkers.icon({ icon:'info-sign', markerColor: color, prefix:'glyphicon' });
     }
 
-    // 모든 마커 수집
+    // 모든 마커 + 오픈데이터 수집
     const MARKERS = [];
     MAP.eachLayer(function(layer){
       if (layer && layer.getPopup && layer.getLatLng){
@@ -97,16 +129,20 @@
 
     refDateInput && refDateInput.addEventListener('change', update);
     onlyTodayChk && onlyTodayChk.addEventListener('change', update);
-    resetBtn && resetBtn.addEventListener('click', function(){
+    resetBtn && resetBtn.addEventListener('click', function(e){
+      e.preventDefault();
       const t = todayKSTDate();
-      refDateInput.value = dateToYMDLocal(t);
+      if (refDateInput) refDateInput.value = dateToYMDLocal(t);
       update();
     });
 
     update();
-  } catch(e){
-    var box = document.getElementById('errorBox');
-    if (box){ box.style.display = 'block'; box.textContent += "\n(" + (e && e.message ? e.message : e) + ")"; }
-    console.error(e);
   }
+
+  // ===== Start: wait until Leaflet + AwesomeMarkers + Folium map are ready =====
+  waitFor(
+    () => window.L && L.AwesomeMarkers && getMapKey(),
+    boot,
+    { timeout: 20000, interval: 80 }
+  );
 })();
