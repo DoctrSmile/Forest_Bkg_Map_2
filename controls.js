@@ -1,4 +1,3 @@
-
 (function(){
   try {
     function getMap(){
@@ -42,6 +41,7 @@
       return L.AwesomeMarkers.icon({ icon:'info-sign', markerColor: color, prefix:'glyphicon' });
     }
 
+    // 모든 마커 수집
     const MARKERS = [];
     MAP.eachLayer(function(layer){
       if (layer && layer.getPopup && layer.getLatLng){
@@ -63,6 +63,7 @@
     const resetBtn = document.getElementById('resetBtn');
 
     function ensureRefDate(){
+      if (!refDateInput) return;
       if (!refDateInput.value){
         const t = todayKSTDate();
         refDateInput.value = dateToYMDLocal(t);
@@ -71,7 +72,7 @@
     ensureRefDate();
 
     function currentRefDate(){
-      if (!refDateInput.value) ensureRefDate();
+      if (!refDateInput || !refDateInput.value) return todayKSTDate();
       const parts = (refDateInput.value || '').split('-').map(x=>parseInt(x,10));
       if (parts.length < 3 || parts.some(isNaN)) return todayKSTDate();
       return new Date(parts[0], parts[1]-1, parts[2]);
@@ -82,7 +83,7 @@
 
     function update(){
       const ref = currentRefDate();
-      const onlyToday = !!onlyTodayChk.checked;
+      const onlyToday = !!(onlyTodayChk && onlyTodayChk.checked);
       for (const it of MARKERS){
         const st = statusFor(it.opens, ref);
         it.marker.setIcon(iconByStatus(st));
@@ -94,16 +95,18 @@
       }
     }
 
-    refDateInput.addEventListener('change', update);
-    onlyTodayChk.addEventListener('change', update);
-    resetBtn.addEventListener('click', function(){
-      refDateInput.value = ''; ensureRefDate(); update();
+    refDateInput && refDateInput.addEventListener('change', update);
+    onlyTodayChk && onlyTodayChk.addEventListener('change', update);
+    resetBtn && resetBtn.addEventListener('click', function(){
+      const t = todayKSTDate();
+      refDateInput.value = dateToYMDLocal(t);
+      update();
     });
 
     update();
   } catch(e){
     var box = document.getElementById('errorBox');
-    if (box){ box.style.display = 'block'; box.textContent += "\\n(" + (e && e.message ? e.message : e) + ")"; }
+    if (box){ box.style.display = 'block'; box.textContent += "\n(" + (e && e.message ? e.message : e) + ")"; }
     console.error(e);
   }
 })();
