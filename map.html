@@ -95,16 +95,46 @@
       const y=d.getFullYear(), m=(d.getMonth()+1).toString().padStart(2,'0'), da=d.getDate().toString().padStart(2,'0');
       return `${y}-${m}-${da}`;
     }
-    function parseDateOnly(str){
-      if (!str) return null;
-      const m = String(str).trim().match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
-      if (!m) return null;
-      return new Date(parseInt(m[1],10), parseInt(m[2],10)-1, parseInt(m[3],10));
-    }
-    function parseOpenList(s){
-      if (!s || !String(s).trim()) return [];
-      return String(s).split(';').map(x=>x.trim()).map(parseDateOnly).filter(Boolean);
-    }
+// 기존 parseDateOnly, parseOpenList 를 아래로 교체
+
+function parseDateOnly(str){
+  if (!str) return null;
+  let s = String(str).trim();
+
+  // 통일: 년/월/일/점/슬래시 제거 → -
+  s = s.replace(/[.\/]/g, '-')
+       .replace(/[년\.\s]*\s*|월\s*/g, '-')
+       .replace(/일/g, '')
+       .replace(/\s+/g, ' ')
+       .trim();
+
+  // "YYYY-M-D HH:mm" 또는 "YYYY-M-D" 모두 허용
+  // 1) 날짜 추출
+  const m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const y = parseInt(m[1], 10);
+  const mo = parseInt(m[2], 10);
+  const d = parseInt(m[3], 10);
+  const hh = m[4] ? parseInt(m[4], 10) : 0;
+  const mm = m[5] ? parseInt(m[5], 10) : 0;
+
+  // 범위 가드
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+
+  return new Date(y, mo - 1, d, hh, mm);
+}
+
+function parseOpenList(s){
+  if (!s || !String(s).trim()) return [];
+  // 세미콜론(;) 기준으로 분리 (줄바꿈도 허용)
+  return String(s)
+    .split(/;|\n/)
+    .map(x => x.trim())
+    .filter(Boolean)
+    .map(parseDateOnly)
+    .filter(Boolean);
+}
+
     // Safe icon creator: fallback to emoji if AwesomeMarkers missing
     function iconByStatus(st){
       try {
