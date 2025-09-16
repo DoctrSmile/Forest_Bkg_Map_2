@@ -51,41 +51,41 @@
   </div>
 
   <script src="./controls.js" defer>
-  (function () {
-    var ua = navigator.userAgent || "";
-    var inKakao = /KAKAOTALK/i.test(ua);
-    if (!inKakao) return;
+  // (function () {
+  //   var ua = navigator.userAgent || "";
+  //   var inKakao = /KAKAOTALK/i.test(ua);
+  //   if (!inKakao) return;
 
-    var banner = document.getElementById("kakao-banner");
-    var openBtn = document.getElementById("open-ext");
-    var copyBtn = document.getElementById("copy-url");
-    var url = location.href.split("#")[0];
+  //   var banner = document.getElementById("kakao-banner");
+  //   var openBtn = document.getElementById("open-ext");
+  //   var copyBtn = document.getElementById("copy-url");
+  //   var url = location.href.split("#")[0];
 
-    // Default open link: same URL (let OS choose default browser)
-    openBtn.href = url;
+  //   // Default open link: same URL (let OS choose default browser)
+  //   openBtn.href = url;
 
-    // Android: try Chrome intent
-    if (/Android/i.test(ua)) {
-      try {
-        var proto = location.protocol.replace(":", "");
-        var hostPath = location.host + location.pathname;
-        openBtn.href = "intent://" + hostPath + "#Intent;scheme=" + proto + ";package=com.android.chrome;end";
-      } catch(e) {}
-    }
+  //   // Android: try Chrome intent
+  //   if (/Android/i.test(ua)) {
+  //     try {
+  //       var proto = location.protocol.replace(":", "");
+  //       var hostPath = location.host + location.pathname;
+  //       openBtn.href = "intent://" + hostPath + "#Intent;scheme=" + proto + ";package=com.android.chrome;end";
+  //     } catch(e) {}
+  //   }
 
-    copyBtn.onclick = function () {
-      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
-        .then(function(){ copyBtn.textContent="복사됨!"; })
-        .catch(function(){
-          var ta = document.createElement("textarea");
-          ta.value = url; document.body.appendChild(ta);
-          ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
-          copyBtn.textContent="복사됨!";
-        });
-    };
+  //   copyBtn.onclick = function () {
+  //     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+  //       .then(function(){ copyBtn.textContent="복사됨!"; })
+  //       .catch(function(){
+  //         var ta = document.createElement("textarea");
+  //         ta.value = url; document.body.appendChild(ta);
+  //         ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+  //         copyBtn.textContent="복사됨!";
+  //       });
+  //   };
 
-    banner.style.display = "block";
-  })();
+  //   banner.style.display = "block";
+  // })();
   </script>
 </body>
 </html>
