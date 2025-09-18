@@ -100,40 +100,25 @@
 function parseDateOnly(str){
   if (!str) return null;
   let s = String(str).trim();
-
-  // 통일: 년/월/일/점/슬래시 제거 → -
+  // 2025.9.5 / 2025/09/05 / 2025년 9월 5일 09:00 등 허용
   s = s.replace(/[.\/]/g, '-')
-       .replace(/[년\.\s]*\s*|월\s*/g, '-')
+       .replace(/년|월/g, '-')
        .replace(/일/g, '')
        .replace(/\s+/g, ' ')
        .trim();
-
-  // "YYYY-M-D HH:mm" 또는 "YYYY-M-D" 모두 허용
-  // 1) 날짜 추출
   const m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{2}))?/);
   if (!m) return null;
-  const y = parseInt(m[1], 10);
-  const mo = parseInt(m[2], 10);
-  const d = parseInt(m[3], 10);
-  const hh = m[4] ? parseInt(m[4], 10) : 0;
-  const mm = m[5] ? parseInt(m[5], 10) : 0;
-
-  // 범위 가드
-  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
-
-  return new Date(y, mo - 1, d, hh, mm);
+  const y = +m[1], mo = +m[2], d = +m[3], hh = m[4]?+m[4]:0, mm = m[5]?+m[5]:0;
+  if (mo<1||mo>12||d<1||d>31) return null;
+  return new Date(y, mo-1, d, hh, mm);
 }
-
 function parseOpenList(s){
   if (!s || !String(s).trim()) return [];
-  // 세미콜론(;) 기준으로 분리 (줄바꿈도 허용)
-  return String(s)
-    .split(/;|\n/)
-    .map(x => x.trim())
-    .filter(Boolean)
-    .map(parseDateOnly)
-    .filter(Boolean);
+  // 세미콜론(;) 또는 줄바꿈으로 분리
+  return String(s).split(/;|\n/).map(x=>x.trim()).filter(Boolean)
+    .map(parseDateOnly).filter(Boolean);
 }
+
 
     // Safe icon creator: fallback to emoji if AwesomeMarkers missing
     function iconByStatus(st){
@@ -168,38 +153,70 @@ function parseOpenList(s){
 
     const markers = [];
     const bounds = L.latLngBounds();
+// ▼▼▼ 여기 붙여넣기: 헤더 느슨 인식 헬퍼 ▼▼▼
+function getVal(row, candidates) {
+  const keys = Object.keys(row || {});
+  const strip = s => String(s||'')
+    .replace(/^\uFEFF/, '')   // BOM 제거
+    .replace(/\u00A0/g,' ')   // NBSP → space
+    .trim();
 
-    function addRow(row){
-      const name = row['휴양림명'] || '';
-      const reg = row['권역'] || '';
-      const loc = row['지자체'] || '';
-      const lat = parseFloat(row['위도']);
-      const lon = parseFloat(row['경도']);
-      if (isNaN(lat) || isNaN(lon)) return;
+  // 1) 정확/trim 일치
+  for (const want of candidates) {
+    if (want in row) return row[want];
+    const t = strip(want);
+    for (const k of keys) if (strip(k) === t) return row[k];
+  }
+  // 2) 공백 제거 후 완전일치
+  const norm = s => strip(s).replace(/\s/g,'');
+  for (const want of candidates) {
+    const w = norm(want);
+    for (const k of keys) if (norm(k) === w) return row[k];
+  }
+  // 3) 부분 포함(후보 단어가 포함되면 채택)
+  for (const want of candidates) {
+    const w = norm(want);
+    for (const k of keys) if (norm(k).includes(w)) return row[k];
+  }
+  return '';
+}
+// ▲▲▲ 여기까지 붙여넣기 ▲▲▲
 
-      const qual = row['좌표정확도'] || '';
-      const opensStr = row['9월 일반예약 오픈일시(복수)'] || '';
-      const opens = parseOpenList(opensStr);
-      const link = (row['홈페이지'] || '').trim();
+   function addRow(row){
+  const name = getVal(row, ['휴양림명','시설명','명칭']);
+  const reg  = getVal(row, ['권역','지역권역']);
+  const loc  = getVal(row, ['지자체','시군구','주소지']);
+  const lat  = parseFloat(getVal(row, ['위도','lat','LAT']));
+  const lon  = parseFloat(getVal(row, ['경도','lon','LON']));
+  if (isNaN(lat) || isNaN(lon)) return;
 
-      const popupHtml = `
-        <div style="width:420px">
-          <h4 style="margin:0">${name}</h4>
-          <div>좌표 정확도: <b>${qual}</b></div>
-          <div>권역/지자체: ${reg} / ${loc}</div>
-          <div>9월 오픈일시(→10월): ${opensStr || '- (미확정)'}</div>
-          ${link ? `<div>링크: <a href="${link}" target="_blank" rel="noopener">공식/검색 링크</a></div>` : ''}
-        </div>
-      `;
+  const qual     = getVal(row, ['좌표정확도','좌표정확']);
+  const opensStr = getVal(row, [
+    '9월 일반예약 오픈일시(복수)','9월 일반예약 오픈일시','오픈일시','오픈일시(복수)'
+  ]);
+  const link     = (getVal(row, ['홈페이지','URL','url']) || '').trim();
 
-      const m = L.marker([lat, lon], { icon: iconByStatus('past') })
-        .bindPopup(popupHtml, { maxWidth: 460 })
-        .bindTooltip(`${name}`);
-      m.addTo(map);
+  const opens = parseOpenList(opensStr);
 
-      markers.push({ marker: m, opens });
-      bounds.extend([lat, lon]);
-    }
+  const popupHtml = `
+    <div style="width:420px">
+      <h4 style="margin:0">${name}</h4>
+      <div>좌표 정확도: <b>${qual||'-'}</b></div>
+      <div>권역/지자체: ${reg||'-'} / ${loc||'-'}</div>
+      <div>9월 오픈일시(→10월): ${opensStr || '- (미확정)'}</div>
+      ${link ? `<div>링크: <a href="${link}" target="_blank" rel="noopener">공식/검색 링크</a></div>` : ''}
+    </div>
+  `;
+
+  const m = L.marker([lat, lon], { icon: iconByStatus('past') })
+    .bindPopup(popupHtml, { maxWidth: 460 })
+    .bindTooltip(`${name}`);
+  m.addTo(map);
+
+  markers.push({ marker: m, opens });
+  bounds.extend([lat, lon]);
+}
+
 
     function ensureRefToday(){
       const refInput = document.getElementById('refDate');
